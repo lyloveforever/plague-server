@@ -332,8 +332,9 @@ router.post('/api/proclamation/all', (req, res) => {
 router.post('/api/proclamation/status', (req, res) => {
     const id = req.body.id;
     const releaseState = req.body.releaseState;
-    let status_sql = "UPDATE notice SET releaseState = ? WHERE id = " + id;
-    let strParams = [releaseState];
+    const releaseDate = req.body.releaseDate
+    let status_sql = "UPDATE notice SET releaseState = ?, releaseDate = ? WHERE id = " + id;
+    let strParams = [releaseState,releaseDate];
     conn.query(status_sql, strParams, (error, results, fields) => {
         if (error) {
             res.json({
@@ -359,6 +360,7 @@ router.post('/api/apply/all', (req, res) => {
     const size = req.body.size;
     let approvalStatus = req.body.approvalStatus !== undefined ? (req.body.approvalStatus + 1) : undefined;
     let inschool = req.body.inschool !== undefined ? (req.body.inschool + 1) : undefined;
+    let date = req.body.date !==undefined ? req.body.date:undefined;
     let sqlStr;
     if (!inschool) {
         if (!userNumber) {
@@ -386,6 +388,9 @@ router.post('/api/apply/all', (req, res) => {
                 sqlStr = "SELECT * FROM leaveinfo WHERE userNumber=" + userNumber + " and inschool =" + (inschool - 1);
             }
         }
+    }
+    if(date){
+        sqlStr += "and applyDate = " + date
     }
     conn.query(sqlStr, (error, results, fields) => {
         if (error) {
@@ -1432,6 +1437,11 @@ router.post('/api/uniApply/add', (req, res) => {
                 message: '申请失败'
             })
         } else {
+            if(type === 1){
+                let sqlStr2 = "UPDATE user SET recentTime = ?"
+                let strParams2 = [returnDate]
+                conn.query(sqlStr2,strParams2,(error,results,fields))
+            }
             res.json({
                 success_code: 200,
                 message: '申请成功'
@@ -1443,8 +1453,36 @@ router.post('/api/uniApply/add', (req, res) => {
 
 
 /**
- * 公告通知用之前的接口
+ * 公告通知
  */
+router.post('/api/uniapp/proclamation', (req, res) => {
+    const page = req.body.page;
+    const size = req.body.size;
+    const releaseState =1;
+    let sqlStr = "SELECT * FROM notice WHERE releaseState = " + releaseState;
+    conn.query(sqlStr, (error, results, fields) => {
+        if (error) {
+            res.json({
+                error_code: 0,
+                message: '失败',
+            });
+        } else {
+            let arr = JSON.parse(JSON.stringify(results))
+            let brr = []
+            for (let i = (page - 1) * size; i < page * size; i++) {
+                if (arr[i]) {
+                    brr.push(arr[i])
+                }
+            }
+            results = JSON.parse(JSON.stringify(brr));
+            res.json({
+                success_code: 200,
+                message: results,
+                size: arr.length
+            })
+        }
+    })
+})
 
 
 /**
